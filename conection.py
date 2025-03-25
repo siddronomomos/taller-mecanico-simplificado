@@ -41,7 +41,7 @@ class Connection:
                 nombre VARCHAR(30) NOT NULL,
                 telefono VARCHAR(10) NOT NULL,
                 rfc VARCHAR(13) NOT NULL UNIQUE,
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(usuario_id) ON DELETE CASCADE ON UPDATE CASCADE
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(usuario_id) ON DELETE RESTRICT ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         """)
         
@@ -52,7 +52,7 @@ class Connection:
                 modelo VARCHAR(20) NOT NULL,
                 marca VARCHAR(20) NOT NULL,
                 cliente_id INT(10) NOT NULL,
-                FOREIGN KEY (cliente_id) REFERENCES clientes(cliente_id) ON DELETE CASCADE ON UPDATE CASCADE
+                FOREIGN KEY (cliente_id) REFERENCES clientes(cliente_id) ON DELETE RESTRICT ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         """)
         
@@ -62,7 +62,7 @@ class Connection:
                 matricula VARCHAR(10) NOT NULL,
                 fecha_entrada VARCHAR(10) NOT NULL,
                 fecha_salida VARCHAR(10) NOT NULL,
-                FOREIGN KEY (matricula) REFERENCES vehiculos(matricula) ON DELETE CASCADE ON UPDATE CASCADE
+                FOREIGN KEY (matricula) REFERENCES vehiculos(matricula) ON DELETE RESTRICT ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         """)
         

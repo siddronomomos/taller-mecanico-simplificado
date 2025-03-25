@@ -1,11 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from dbUser import dbUser
 from user import User
 
 class frmUser:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("CRUD Usuarios")
         self.db = dbUser()

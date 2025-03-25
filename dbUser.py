@@ -49,7 +49,7 @@ class dbUser:
             return False
         return True
     
-    def get(self, user: User) -> User:
+    def get(self, user: User) -> User | None:
         try:
             self.cursor.execute("""
                 SELECT * FROM usuarios
@@ -64,6 +64,23 @@ class dbUser:
         except:
             return None
         return user
+    
+    def getAll(self) -> list[User]:
+        users = []
+        try:
+            self.cursor.execute("SELECT * FROM usuarios")
+            rows = self.cursor.fetchall()
+            for row in rows:
+                user = User()
+                user.setID(row[0])
+                user.setNombre(row[1])
+                user.setUserName(row[2])
+                user.setPassword(row[3])
+                user.setPerfil(row[4])
+                users.append(user)
+        except:
+            return []
+        return users
     
     def login(self, user: User) -> User | bool: 
         try:
