@@ -1,8 +1,7 @@
 from conection import Connection as con
 from cliente import Cliente
-from dbVehiculo import dbVehiculo
 from user import User
-from dbUser import dbUser
+from dbUsers import dbUser
 from vehiculo import Vehiculo
 
 class dbCliente:
@@ -95,6 +94,7 @@ class dbCliente:
         
     
     def getVehiculos(self, cliente: Cliente) -> list[Vehiculo]:
+        from dbVehiculos import dbVehiculo
         dbvehiculo = dbVehiculo()
         vehiculo = Vehiculo()
         vehiculo.setClienteID(cliente.getID())

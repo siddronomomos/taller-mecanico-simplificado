@@ -1,7 +1,6 @@
 from conection import Connection as con
 from vehiculo import Vehiculo
 from cliente import Cliente
-from dbCliente import dbCliente
 class dbVehiculo:
     def __init__(self):
         self.connection = con()
@@ -96,6 +95,7 @@ class dbVehiculo:
         return vehiculos
     
     def getCliente(self, vehiculo: Vehiculo) -> Cliente | None:
+        from dbClientes import dbCliente
         dbcliente = dbCliente()
         cliente = Cliente()
         cliente.setID(vehiculo.getClienteID())

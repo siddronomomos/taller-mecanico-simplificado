@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from dbUser import dbUser
+from dbUsers import dbUser
 from user import User
 
 class frmUser:
@@ -42,6 +42,14 @@ class frmUser:
         tk.Button(button_frame, text="Limpiar", command=self.clear_fields).grid(row=0, column=4, padx=5)
         
     def save_user(self):
+        if self.id_entry.get() != "":
+            messagebox.showerror("Error", "No se puede guardar un usuario con ID")
+            return
+        
+        if self.nombre_entry.get() == "" or self.username_entry.get() == "" or self.password_entry.get() == "" or self.perfil_combobox.get() == "":
+            messagebox.showerror("Error", "Todos los campos son requeridos")
+            return
+
         u = User()
         u.setNombre(self.nombre_entry.get())
         u.setUserName(self.username_entry.get())
@@ -54,6 +62,14 @@ class frmUser:
             messagebox.showerror("Error", "No se pudo guardar el usuario")
         
     def update_user(self):
+
+        if self.id_entry.get() == "":
+            messagebox.showerror("Error", "Se requiere un ID para actualizar un usuario")
+            return
+        
+        if self.nombre_entry.get() == "" or self.username_entry.get() == "" or self.password_entry.get() == "" or self.perfil_combobox.get() == "":
+            messagebox.showerror("Error", "Todos los campos son requeridos")
+
         u = User()
         u.setID(int(self.id_entry.get()))
         u.setNombre(self.nombre_entry.get())
@@ -67,6 +83,10 @@ class frmUser:
             messagebox.showerror("Error", "No se pudo actualizar el usuario")
         
     def delete_user(self):
+
+        if self.id_entry.get() == "":
+            messagebox.showerror("Error", "Se requiere un ID para eliminar un usuario")
+
         u = User()
         u.setID(int(self.id_entry.get()))
         
@@ -76,6 +96,10 @@ class frmUser:
             messagebox.showerror("Error", "No se pudo eliminar el usuario")
         
     def get_user(self):
+
+        if self.id_entry.get() == "":
+            messagebox.showerror("Error", "Se requiere un ID para eliminar un usuario")
+
         u = User()
         u.setID(int(self.id_entry.get()))
         result = self.db.get(u)
