@@ -43,9 +43,9 @@ class frmVehiculo:
 
     def save_vehiculo(self):
 
-        if self.matricula_entry.get() != "":
-            messagebox.showerror("Error", "No se puede guardar un vehículo con matrícula")
-            return
+        # if self.matricula_entry.get() != "":
+        #     messagebox.showerror("Error", "No se puede guardar un vehículo con matrícula")
+        #     return
 
         if self.matricula_entry.get() == "" or self.serie_entry.get() == "" or self.modelo_entry.get() == "" or self.marca_entry.get() == "" or self.cliente_id_combo.get() == "":
             messagebox.showerror("Error", "Todos los campos son requeridos")
