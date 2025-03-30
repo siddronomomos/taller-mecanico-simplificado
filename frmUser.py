@@ -29,7 +29,8 @@ class frmUser:
         self.password_entry.grid(row=3, column=1, pady=5)
         
         tk.Label(main_frame, text="Perfil:").grid(row=4, column=0, sticky="e", pady=5)
-        self.perfil_combobox = ttk.Combobox(main_frame, values=["Admin", "Auxiliar", "Mecánico"])
+        self.perfil_combobox = ttk.Combobox(main_frame, values=["admin", "aux", "mecanico"], state="readonly")
+        self.perfil_combobox.set("Seleccione un perfil")
         self.perfil_combobox.grid(row=4, column=1, pady=5)
         
         button_frame = tk.Frame(main_frame, pady=10)
@@ -46,7 +47,7 @@ class frmUser:
             messagebox.showerror("Error", "No se puede guardar un usuario con ID")
             return
         
-        if self.nombre_entry.get() == "" or self.username_entry.get() == "" or self.password_entry.get() == "" or self.perfil_combobox.get() == "":
+        if self.nombre_entry.get() == "" or self.username_entry.get() == "" or self.password_entry.get() == "" or self.perfil_combobox.get() == "Seleccione un perfil" or self.perfil_combobox.get() == "":
             messagebox.showerror("Error", "Todos los campos son requeridos")
             return
 

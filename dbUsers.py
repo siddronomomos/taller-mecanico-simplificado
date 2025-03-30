@@ -1,5 +1,6 @@
 from conection import Connection as con
 from user import User
+from typing import Literal
 class dbUser:
     def __init__(self) -> None:
         self.connection = con()
@@ -82,7 +83,7 @@ class dbUser:
             return []
         return users
     
-    def login(self, user: User) -> User | bool: 
+    def login(self, user: User) -> User | Literal[False]:
         try:
             self.cursor.execute("""
                 SELECT * FROM usuarios
