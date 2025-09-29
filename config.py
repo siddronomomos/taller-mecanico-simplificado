@@ -42,8 +42,19 @@ class Config:
                       foreground=Config.THEME['fg'],
                       font=Config.THEME['font'])
         style.configure('TButton',
-                      background=Config.THEME['button_bg'],
-                      foreground=Config.THEME['button_fg'],
-                      font=Config.THEME['font'])
+                      foreground=Config.THEME['fg'], # Color de texto general
+                      font=Config.THEME['font'],
+                      padding=6)
+        style.map('TButton',
+                  background=[('active', Config.THEME['border'])])
+        style.configure('Accent.TButton',
+                        font=Config.THEME['font'])
+        style.configure('Danger.TButton',
+                        foreground=Config.THEME['error'],
+                        font=Config.THEME['font'])
+
+        style.configure('Secondary.TButton',
+                        foreground=Config.THEME['fg'],
+                        font=Config.THEME['font'])
         style.configure('Error.TLabel', foreground=Config.THEME['error'])
         style.configure('Success.TLabel', foreground=Config.THEME['success'])

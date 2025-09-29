@@ -1,5 +1,5 @@
 from typing import List, Optional
-from mysql.connector import Error
+from mysql.connector import Error, IntegrityError
 from models.cliente import Cliente
 from db.connection import Connection
 
@@ -7,9 +7,9 @@ class ClienteDAO:
     def __init__(self):
         self.connection = Connection()
     
-    def save(self, cliente: Cliente) -> bool:
+    def save(self, cliente: Cliente) -> Optional[Cliente]:
         if not cliente.validate():
-            return False
+            return None
             
         query = """
             INSERT INTO clientes (usuario_id, nombre, telefono, rfc)
@@ -26,11 +26,11 @@ class ClienteDAO:
             self.connection.cursor.execute(query, params)
             cliente.cliente_id = self.connection.cursor.lastrowid
             self.connection.commit()
-            return True
+            return cliente
         except Error as e:
             print(f"Error al guardar cliente: {e}")
             self.connection.rollback()
-            return False
+            return None
     
     def update(self, cliente: Cliente) -> bool:
         if not cliente.validate() or not cliente.cliente_id:
@@ -66,6 +66,10 @@ class ClienteDAO:
             self.connection.cursor.execute(query, (cliente_id,))
             self.connection.commit()
             return self.connection.cursor.rowcount > 0
+        except IntegrityError:
+            # Error de clave foránea: el cliente tiene registros asociados
+            self.connection.rollback()
+            raise IntegrityError("El cliente tiene vehículos u otros registros asociados y no puede ser eliminado.")
         except Error as e:
             print(f"Error al eliminar cliente: {e}")
             self.connection.rollback()

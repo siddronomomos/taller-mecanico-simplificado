@@ -2,6 +2,8 @@ from typing import List, Optional
 from mysql.connector import Error
 from models.reparacion import Reparacion
 from db.connection import Connection
+from db.detalle_reparacion_dao import DetalleReparacionDAO
+from db.pieza_dao import PiezaDAO
 
 class ReparacionDAO:
     def __init__(self):
@@ -157,3 +159,47 @@ class ReparacionDAO:
         except Error as e:
             print(f"Error al obtener reparaciones por vehículo: {e}")
             return []
+    
+    def delete_with_transaction(self, folio: int) -> bool:
+        """
+        Elimina una reparación y sus detalles, devolviendo las piezas al stock,
+        todo dentro de una transacción para garantizar la atomicidad.
+        """
+        detalle_dao = DetalleReparacionDAO()
+        pieza_dao = PiezaDAO()
+        
+        try:
+            # Iniciar transacción
+            self.connection.start_transaction()
+            
+            # 1. Obtener los detalles de la reparación para saber qué piezas devolver
+            detalles = detalle_dao.get_by_folio(folio)
+            
+            # 2. Devolver las piezas al inventario
+            for detalle in detalles:
+                if not pieza_dao.update_stock(detalle['pieza_id'], detalle['cantidad']):
+                    # Si falla la actualización de stock, revertir todo
+                    raise Error("No se pudo devolver una pieza al stock.")
+            
+            # 3. Eliminar los detalles de la reparación
+            if detalles: # Solo si había detalles
+                if not detalle_dao.delete_by_folio(folio):
+                    raise Error("No se pudieron eliminar los detalles de la reparación.")
+
+            # 4. Finalmente, eliminar la reparación principal
+            query = "DELETE FROM reparaciones WHERE folio = %s"
+            self.connection.cursor.execute(query, (folio,))
+            
+            if self.connection.cursor.rowcount == 0:
+                # Si la reparación no se encontró o no se pudo borrar
+                raise Error("La reparación no pudo ser eliminada.")
+
+            # Si todo fue exitoso, confirmar la transacción
+            self.connection.commit()
+            return True
+            
+        except Error as e:
+            # Si algo falla, revertir todos los cambios
+            print(f"Error en la transacción de eliminación: {e}")
+            self.connection.rollback()
+            return False

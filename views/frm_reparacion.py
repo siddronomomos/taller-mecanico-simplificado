@@ -449,13 +449,11 @@ class ReparacionForm(BaseForm):
                 estado=estado
             )
             
-            if not reparacion.validate():
-                self.show_error("Datos de la reparación no válidos")
-                return None
+            reparacion.validate() # Esto puede lanzar ValueError
                 
             return reparacion
         except ValueError as e:
-            self.show_error(f"Error en fechas: {str(e)}")
+            self.show_error(str(e))
             return None
         except KeyError:
             self.show_error("Seleccione un vehículo válido")

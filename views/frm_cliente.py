@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional
+from mysql.connector import IntegrityError
 from models.cliente import Cliente
 from models.user import User
 from db.cliente_dao import ClienteDAO
@@ -248,37 +249,59 @@ class ClienteForm(BaseForm):
         return cliente
     
     def _save(self):
-        cliente = self._get_form_data()
-        if not cliente:
+        cliente_data = self._get_form_data()
+        if not cliente_data:
             return
             
-        if self.cliente_id:
-            if self.user.perfil != 'admin':
-                self.show_error("No tiene permisos para editar clientes")
-                return
-                
-            success = self.cliente_dao.update(cliente)
-            msg = "actualizado"
-        else:
-            success = self.cliente_dao.save(cliente)
-            msg = "registrado"
+        try:
+            if self.cliente_id:
+                # --- Actualizar cliente existente ---
+                if self.user.perfil != 'admin':
+                    self.show_error("No tiene permisos para editar clientes")
+                    return
+                    
+                if self.cliente_dao.update(cliente_data):
+                    self.show_success("Cliente actualizado correctamente")
+                    # Recargar datos para reflejar cualquier cambio del backend
+                    self.cliente = self.cliente_dao.get(self.cliente_id)
+                    self._load_cliente_data()
+                else:
+                    self.show_error("No se pudo actualizar el cliente")
             
-        if success:
-            self.show_success(f"Cliente {msg} correctamente")
-            if self.user.perfil == 'admin':
-                self._clear_form()
             else:
-                self.destroy()
-        else:
-            self.show_error(f"No se pudo {msg} el cliente")
+                # --- Crear nuevo cliente ---
+                nuevo_cliente = self.cliente_dao.save(cliente_data)
+                if nuevo_cliente:
+                    self.show_success("Cliente registrado correctamente")
+                    
+                    # Cambiar a modo edición
+                    self.cliente_id = nuevo_cliente.cliente_id
+                    self.cliente = nuevo_cliente
+                    self._load_cliente_data()
+                    
+                    # Actualizar UI para modo edición
+                    self.title(f"Gestión de Cliente - ID: {self.cliente_id}")
+                    if self.user.perfil == 'admin':
+                        # Asegurarse de que el botón de eliminar sea visible
+                        self.delete_btn.pack(side='left', padx=5)
+                else:
+                    self.show_error("No se pudo registrar el cliente")
+
+        except Exception as e:
+            self.show_error(f"Ocurrió un error inesperado: {e}")
     
     def _delete(self):
         if not self.cliente_id or self.user.perfil != 'admin':
             return
             
         if self.ask_confirmation("¿Está seguro de eliminar este cliente?"):
-            if self.cliente_dao.delete(self.cliente_id):
-                self.show_success("Cliente eliminado correctamente")
-                self._clear_form()
-            else:
-                self.show_error("No se pudo eliminar el cliente")
+            try:
+                if self.cliente_dao.delete(self.cliente_id):
+                    self.show_success("Cliente eliminado correctamente")
+                    self._clear_form()
+                else:
+                    self.show_error("No se pudo eliminar el cliente. Verifique que no tenga vehículos asociados.")
+            except IntegrityError as e:
+                self.show_error(str(e))
+            except Exception as e:
+                self.show_error(f"Ocurrió un error inesperado: {e}")
