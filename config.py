@@ -15,10 +15,8 @@ class ThemeConfig(TypedDict):
     success: str
 
 class Config:
-    DB_HOST = os.getenv('DB_HOST', 'localhost')
-    DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-    DB_NAME = os.getenv('DB_NAME', 'taller_mecanico')
+    API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:4000/api')
+    API_TIMEOUT = float(os.getenv('API_TIMEOUT', '10'))
     APP_TITLE = "Taller Mecánico"
     
     THEME: ThemeConfig = {

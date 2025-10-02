@@ -1,161 +1,94 @@
 from typing import List, Optional
-from mysql.connector import Error
+
+from api_client import ApiClient, ApiError, shared_client
 from models.vehiculo import Vehiculo
-from db.connection import Connection
+
 
 class VehiculoDAO:
-    def __init__(self):
-        self.connection = Connection()
-    
+    def __init__(self, client: Optional[ApiClient] = None):
+        self.client = client or shared_client
+
+    def _to_model(self, data: dict) -> Vehiculo:
+        vehiculo = Vehiculo(
+            matricula=data.get('matricula'),
+            serie=data.get('serie'),
+            modelo=data.get('modelo'),
+            marca=data.get('marca'),
+            anio=data.get('anio'),
+            cliente_id=data.get('clienteId'),
+        )
+        vehiculo.cliente_nombre = data.get('clienteNombre')
+        return vehiculo
+
     def save(self, vehiculo: Vehiculo) -> bool:
         if not vehiculo.validate():
             return False
-            
-        query = """
-            INSERT INTO vehiculos (matricula, serie, modelo, marca, anio, cliente_id)
-            VALUES (%(matricula)s, %(serie)s, %(modelo)s, %(marca)s, %(anio)s, %(cliente_id)s)
-        """
-        params = {
+
+        payload = {
             'matricula': vehiculo.matricula,
             'serie': vehiculo.serie,
             'modelo': vehiculo.modelo,
             'marca': vehiculo.marca,
             'anio': vehiculo.anio,
-            'cliente_id': vehiculo.cliente_id
+            'clienteId': vehiculo.cliente_id,
         }
-        
+
         try:
-            self.connection.cursor.execute(query, params)
-            self.connection.commit()
+            self.client.post('/vehiculos', json=payload)
             return True
-        except Error as e:
-            print(f"Error al guardar vehículo: {e}")
-            self.connection.rollback()
+        except ApiError as error:
+            print(f"Error al guardar vehículo: {error}")
             return False
-    
+
     def update(self, vehiculo: Vehiculo) -> bool:
         if not vehiculo.validate():
             return False
-            
-        query = """
-            UPDATE vehiculos
-            SET serie = %(serie)s,
-                modelo = %(modelo)s,
-                marca = %(marca)s,
-                anio = %(anio)s,
-                cliente_id = %(cliente_id)s
-            WHERE matricula = %(matricula)s
-        """
-        params = {
-            'matricula': vehiculo.matricula,
+
+        payload = {
             'serie': vehiculo.serie,
             'modelo': vehiculo.modelo,
             'marca': vehiculo.marca,
             'anio': vehiculo.anio,
-            'cliente_id': vehiculo.cliente_id
+            'clienteId': vehiculo.cliente_id,
         }
-        
+
         try:
-            self.connection.cursor.execute(query, params)
-            self.connection.commit()
-            return self.connection.cursor.rowcount > 0
-        except Error as e:
-            print(f"Error al actualizar vehículo: {e}")
-            self.connection.rollback()
+            self.client.put(f"/vehiculos/{vehiculo.matricula}", json=payload)
+            return True
+        except ApiError as error:
+            print(f"Error al actualizar vehículo: {error}")
             return False
-    
+
     def delete(self, matricula: str) -> bool:
-        query = "DELETE FROM vehiculos WHERE matricula = %s"
-        
         try:
-            self.connection.cursor.execute(query, (matricula,))
-            self.connection.commit()
-            return self.connection.cursor.rowcount > 0
-        except Error as e:
-            print(f"Error al eliminar vehículo: {e}")
-            self.connection.rollback()
+            self.client.delete(f"/vehiculos/{matricula}")
+            return True
+        except ApiError as error:
+            print(f"Error al eliminar vehículo: {error}")
             return False
-    
+
     def get(self, matricula: str) -> Optional[Vehiculo]:
-        query = """
-            SELECT v.*, c.nombre as cliente_nombre
-            FROM vehiculos v
-            JOIN clientes c ON v.cliente_id = c.cliente_id
-            WHERE v.matricula = %s
-        """
-        
         try:
-            self.connection.cursor.execute(query, (matricula,))
-            result = self.connection.cursor.fetchone()
-            
-            if result:
-                vehiculo = Vehiculo(
-                    matricula=result['matricula'],
-                    serie=result['serie'],
-                    modelo=result['modelo'],
-                    marca=result['marca'],
-                    anio=result['anio'],
-                    cliente_id=result['cliente_id']
-                )
-                vehiculo.cliente_nombre = result['cliente_nombre']
-                return vehiculo
+            data = self.client.get(f"/vehiculos/{matricula}")
+            if isinstance(data, dict):
+                return self._to_model(data)
             return None
-        except Error as e:
-            print(f"Error al obtener vehículo: {e}")
+        except ApiError as error:
+            print(f"Error al obtener vehículo: {error}")
             return None
-    
+
     def get_all(self) -> List[Vehiculo]:
-        query = """
-            SELECT v.*, c.nombre as cliente_nombre
-            FROM vehiculos v
-            JOIN clientes c ON v.cliente_id = c.cliente_id
-            ORDER BY v.marca, v.modelo
-        """
-        vehiculos = []
-        
         try:
-            self.connection.cursor.execute(query)
-            results = self.connection.cursor.fetchall()
-            
-            for result in results:
-                vehiculo = Vehiculo(
-                    matricula=result['matricula'],
-                    serie=result['serie'],
-                    modelo=result['modelo'],
-                    marca=result['marca'],
-                    anio=result['anio'],
-                    cliente_id=result['cliente_id']
-                )
-                vehiculo.cliente_nombre = result['cliente_nombre']
-                vehiculos.append(vehiculo)
-            return vehiculos
-        except Error as e:
-            print(f"Error al obtener vehículos: {e}")
+            data = self.client.get('/vehiculos') or []
+            return [self._to_model(item) for item in data]
+        except ApiError as error:
+            print(f"Error al obtener vehículos: {error}")
             return []
-    
+
     def get_by_client(self, cliente_id: int) -> List[Vehiculo]:
-        query = """
-            SELECT v.*
-            FROM vehiculos v
-            WHERE v.cliente_id = %s
-            ORDER BY v.marca, v.modelo
-        """
-        vehiculos = []
-        
         try:
-            self.connection.cursor.execute(query, (cliente_id,))
-            results = self.connection.cursor.fetchall()
-            
-            for result in results:
-                vehiculos.append(Vehiculo(
-                    matricula=result['matricula'],
-                    serie=result['serie'],
-                    modelo=result['modelo'],
-                    marca=result['marca'],
-                    anio=result['anio'],
-                    cliente_id=result['cliente_id']
-                ))
-            return vehiculos
-        except Error as e:
-            print(f"Error al obtener vehículos por cliente: {e}")
+            data = self.client.get('/vehiculos') or []
+            return [self._to_model(item) for item in data if item.get('clienteId') == cliente_id]
+        except ApiError as error:
+            print(f"Error al obtener vehículos por cliente: {error}")
             return []

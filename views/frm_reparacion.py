@@ -201,41 +201,42 @@ class ReparacionForm(BaseForm):
                 messagebox.showerror("Error", f"No hay suficiente stock. Disponible: {pieza.existencias}")
                 return
 
-            # Verificar si ya existe en la lista, y sumar la cantidad si corresponde
             detalle_existente = next((p for p in self.piezas_asignadas if p['pieza_id'] == pieza_id), None)
-            if detalle_existente:
-                detalle_existente['cantidad'] += cantidad_nueva
-                # Actualizar el detalle en la base de datos (sumar cantidad)
-                nueva_cantidad = detalle_existente['cantidad']
-                self.detalle_dao.delete_by_folio(self.folio)
-                for p_asignada in self.piezas_asignadas:
+            if detalle_existente and detalle_existente.get('detalle_id'):
+                nueva_cantidad = detalle_existente['cantidad'] + cantidad_nueva
+                detalle_id = detalle_existente['detalle_id']
+                cantidad_original = detalle_existente['cantidad']
+
+                if not self.detalle_dao.delete(detalle_id):
+                    messagebox.showerror("Error", "No se pudo actualizar la pieza seleccionada")
+                    return
+
+                if not self.detalle_dao.save(
+                    folio=self.folio,
+                    pieza_id=pieza_id,
+                    cantidad=nueva_cantidad,
+                    precio_unitario=detalle_existente['precio_unitario']
+                ):
+                    messagebox.showerror("Error", "No se pudo guardar la nueva cantidad de la pieza")
+                    # Intentar restaurar el detalle original
                     self.detalle_dao.save(
                         folio=self.folio,
-                        pieza_id=p_asignada['pieza_id'],
-                        cantidad=p_asignada['cantidad'],
-                        precio_unitario=p_asignada['precio_unitario']
+                        pieza_id=pieza_id,
+                        cantidad=cantidad_original,
+                        precio_unitario=detalle_existente['precio_unitario']
                     )
+                    return
             else:
-                # Agregar la nueva pieza a la lista
-                self.piezas_asignadas.append({
-                    'pieza_id': pieza_id,
-                    'descripcion': pieza.descripcion,
-                    'cantidad': cantidad_nueva,
-                    'precio_unitario': pieza.precio
-                })
-                # Guardar en la base de datos
-                self.detalle_dao.save(
+                if not self.detalle_dao.save(
                     folio=self.folio,
                     pieza_id=pieza_id,
                     cantidad=cantidad_nueva,
                     precio_unitario=pieza.precio
-                )
+                ):
+                    messagebox.showerror("Error", "No se pudo agregar la pieza a la reparación")
+                    return
 
-            # Actualizar stock de la pieza en la base de datos
-            self.pieza_dao.update_stock(pieza_id, -cantidad_nueva)
-
-            # Actualizar la lista visible
-            self._actualizar_lista_piezas()
+            self._cargar_piezas_asignadas()
             pieza_dialog.destroy()
 
         ttk.Button(main_frame, text="Agregar", command=agregar).pack(pady=10)
@@ -252,29 +253,24 @@ class ReparacionForm(BaseForm):
             
         if messagebox.askyesno("Confirmar", "¿Está seguro de quitar esta pieza de la reparación?"):
             index = seleccion[0]
-            pieza_removida = self.piezas_asignadas.pop(index)
-            
-            # Devolver stock de la pieza removida
-            self.pieza_dao.update_stock(pieza_removida['pieza_id'], pieza_removida['cantidad'])
+            pieza_removida = self.piezas_asignadas[index]
+            detalle_id = pieza_removida.get('detalle_id')
 
-            # Borrar detalles existentes y reinsertar los que permanecen
-            self.detalle_dao.delete_by_folio(self.folio)
-            for p_asignada in self.piezas_asignadas:
-                self.detalle_dao.save(
-                    folio=self.folio,
-                    pieza_id=p_asignada['pieza_id'],
-                    cantidad=p_asignada['cantidad'],
-                    precio_unitario=p_asignada['precio_unitario']
-                )
-            
-            self._actualizar_lista_piezas()
+            if detalle_id and not self.detalle_dao.delete(detalle_id):
+                messagebox.showerror("Error", "No se pudo eliminar el detalle de la reparación")
+                return
+
+            self._cargar_piezas_asignadas()
     
     def _actualizar_lista_piezas(self):
         """Actualiza el listbox con las piezas asignadas"""
         self.piezas_listbox.delete(0, tk.END)
         
         for pieza in self.piezas_asignadas:
-            texto = f"{pieza['pieza_id']} - {pieza['descripcion']} x{pieza['cantidad']} (${pieza['precio_unitario']} c/u)"
+            descripcion = pieza.get('descripcion', 'Pieza')
+            cantidad = pieza.get('cantidad', 0)
+            precio = pieza.get('precio_unitario', 0)
+            texto = f"{pieza.get('pieza_id')} - {descripcion} x{cantidad} (${precio} c/u)"
             self.piezas_listbox.insert(tk.END, texto)
     
     def _validar_fecha_entrada(self, event=None):
@@ -369,18 +365,27 @@ class ReparacionForm(BaseForm):
             return
             
         detalles = self.detalle_dao.get_by_folio(self.folio)
-        self.piezas_asignadas = []
-        
+        piezas_asignadas = []
+
         for detalle in detalles:
-            pieza = self.pieza_dao.get(detalle['pieza_id'])
-            if pieza:
-                self.piezas_asignadas.append({
-                    'pieza_id': pieza.pieza_id,
-                    'descripcion': pieza.descripcion,
-                    'cantidad': detalle['cantidad'],
-                    'precio_unitario': detalle['precio_unitario']
-                })
-        
+            descripcion = detalle.get('descripcion')
+            precio_unitario = detalle.get('precio_unitario')
+
+            if descripcion is None or precio_unitario is None:
+                pieza = self.pieza_dao.get(detalle['pieza_id'])
+                if pieza:
+                    descripcion = descripcion or pieza.descripcion
+                    precio_unitario = precio_unitario or pieza.precio
+
+            piezas_asignadas.append({
+                'detalle_id': detalle.get('detalle_id'),
+                'pieza_id': detalle.get('pieza_id'),
+                'descripcion': descripcion,
+                'cantidad': detalle.get('cantidad'),
+                'precio_unitario': precio_unitario
+            })
+
+        self.piezas_asignadas = piezas_asignadas
         self._actualizar_lista_piezas()
     
     def _load_data(self):
@@ -478,24 +483,6 @@ class ReparacionForm(BaseForm):
             msg = "registrada"
             
         if success:
-            # Guardar las piezas asignadas
-            if self.folio and self.piezas_asignadas:
-                # Primero eliminamos los detalles existentes
-                self.detalle_dao.delete_by_folio(self.folio)
-                
-                # Luego agregamos los nuevos y actualizamos el stock
-                for pieza in self.piezas_asignadas:
-                    # Guardar el detalle
-                    self.detalle_dao.save(
-                        folio=self.folio,
-                        pieza_id=pieza['pieza_id'],
-                        cantidad=pieza['cantidad'],
-                        precio_unitario=pieza['precio_unitario']
-                    )
-                    
-                    # Actualizar el stock de la pieza
-                    #self.pieza_dao.update_stock(pieza['pieza_id'], -pieza['cantidad'])
-            
             self.show_success(f"Reparación {msg} correctamente")
             if self.user.perfil == 'admin':
                 self._clear_form()
@@ -509,15 +496,6 @@ class ReparacionForm(BaseForm):
             return
             
         if self.ask_confirmation("¿Está seguro de eliminar esta reparación?"):
-            # Primero devolvemos las piezas al inventario
-            detalles = self.detalle_dao.get_by_folio(self.folio)
-            for detalle in detalles:
-                self.pieza_dao.update_stock(detalle['pieza_id'], detalle['cantidad'])
-            
-            # Luego eliminamos los detalles asociados
-            self.detalle_dao.delete_by_folio(self.folio)
-            
-            # Finalmente eliminamos la reparación
             if self.reparacion_dao.delete(self.folio):
                 self.show_success("Reparación eliminada correctamente")
                 self._clear_form()

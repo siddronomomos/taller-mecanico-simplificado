@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional
-from mysql.connector import IntegrityError
+from api_client import ApiError
 from models.cliente import Cliente
 from models.user import User
 from db.cliente_dao import ClienteDAO
@@ -287,6 +287,8 @@ class ClienteForm(BaseForm):
                 else:
                     self.show_error("No se pudo registrar el cliente")
 
+        except ApiError as error:
+            self.show_error(str(error))
         except Exception as e:
             self.show_error(f"Ocurrió un error inesperado: {e}")
     
@@ -301,7 +303,10 @@ class ClienteForm(BaseForm):
                     self._clear_form()
                 else:
                     self.show_error("No se pudo eliminar el cliente. Verifique que no tenga vehículos asociados.")
-            except IntegrityError as e:
-                self.show_error(str(e))
+            except ApiError as error:
+                if error.status_code == 409:
+                    self.show_error("El cliente tiene registros relacionados y no puede ser eliminado")
+                else:
+                    self.show_error(str(error))
             except Exception as e:
                 self.show_error(f"Ocurrió un error inesperado: {e}")

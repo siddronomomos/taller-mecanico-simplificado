@@ -9,6 +9,8 @@ class Reparacion:
     fecha_entrada: Optional[date] = None
     fecha_salida: Optional[date] = None
     estado: str = "pendiente"
+    info_vehiculo: Optional[str] = None
+    info_cliente: Optional[str] = None
     
     def validate(self) -> bool:
         """Valida que los campos obligatorios estén presentes y que las fechas sean lógicas."""
